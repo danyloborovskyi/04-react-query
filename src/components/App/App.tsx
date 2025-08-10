@@ -1,12 +1,13 @@
 import './App.module.css'
-import fetchMovies from "../../services/movieService"
+import fetchMovies, { type MoviesResponse } from "../../services/movieService"
 import SearchBar from "../SearchBar/SearchBar";
 import toast, { Toaster } from 'react-hot-toast';
 import MovieGrid from "../MovieGrid/MovieGrid"
 import type { Movie } from "../../types/movie"
 import Loader from '../Loader/Loader';
 import { useQuery } from '@tanstack/react-query';
-import MoviesResponse from "../../services/movieService"
+import ReactPaginate from 'react-paginate';
+import css from "../ReactPaginate/ReactPaginate.module.css"
 
 import {useState, useEffect} from "react"
 import ErrorMessage from '../ErrorMessage/ErrorMessage';
@@ -14,33 +15,30 @@ import MovieModal from '../MovieModal/MovieModal';
 
 function App() {
 
-  const [movies, setMovies] = useState<Movie[]>([]);
+  // const [movies, setMovies] = useState<Movie[]>([]);
   const [movie, setMovie] = useState<Movie | null>(null)
-  const [loader, setLoader] = useState(false)
   const [openModal, setOpenModal] = useState(false)
-  const [page, setPage] = useState<number>(1)
+  const [currentPage, setCurrentPage] = useState<number>(1)
   const [query, setQuery] = useState<string>("")
 
-  const {data, error, isLoading, isError } = 
-      useQuery({
-        queryKey: ["movies", page, query],
-        queryFn: () => fetchMovies(query, page)
+  const {data, isLoading, isError, isFetching } = 
+      useQuery<MoviesResponse>({
+        queryKey: ["movies", currentPage, query],
+        queryFn: () => fetchMovies(query, currentPage),
+        enabled: !!query,
+        refetchOnWindowFocus: false,
       })
+
+      useEffect(() => {
+    if (data?.results.length === 0 && !isFetching) {
+      toast("No movies found for your request.");
+    }
+  }, [data, isFetching]);
 
   async function handleSearchSubmit(newQuery: string) {
     setQuery(newQuery);
-    setPage(1)
-    if (data) {
-      setMovies(data.results) 
-    }
-    
+    setCurrentPage(1);
   }
-    
-  useEffect(() => {
-    console.log(movies)
-    console.log(query)
-  }
-  , [query])
 
   function handleClick(movie: Movie) {
     setMovie(movie);
@@ -56,14 +54,27 @@ function App() {
     <>
       <Toaster />
       <SearchBar onSubmit={handleSearchSubmit} />
-      {/* {error === true && <ErrorMessage />} */}
-      {loader === true ? (<Loader />) : (<MovieGrid movies={movies} onSelect={handleClick} />)}
+      {data && data?.total_pages > 1 && <ReactPaginate
+        pageCount={data?.total_pages}
+        pageRangeDisplayed={5}
+        marginPagesDisplayed={1}
+        onPageChange={({ selected }) => setCurrentPage(selected + 1)}
+        forcePage={currentPage - 1}
+        containerClassName={css.pagination}
+        activeClassName={css.active}
+        nextLabel="→"
+        previousLabel="←"
+/>}
+      {isError && <ErrorMessage />}
+      {isLoading ? (<Loader />) : (<MovieGrid movies={data?.results ?? []} onSelect={handleClick} />)}
       {openModal === true && <MovieModal movie={ movie } onClose={handleClose}/>}
     </>
   )
 }
 
 export default App
+
+// -------------------------------------
 
 // function App() {
 
