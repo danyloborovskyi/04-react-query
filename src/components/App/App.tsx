@@ -5,7 +5,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import MovieGrid from "../MovieGrid/MovieGrid"
 import type { Movie } from "../../types/movie"
 import Loader from '../Loader/Loader';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import ReactPaginate from 'react-paginate';
 import css from "../ReactPaginate/ReactPaginate.module.css"
 
@@ -23,10 +23,11 @@ function App() {
 
   const {data, isLoading, isError, isFetching } = 
       useQuery<MoviesResponse>({
-        queryKey: ["movies", currentPage, query],
+        queryKey: ["movies", query, currentPage],
         queryFn: () => fetchMovies(query, currentPage),
         enabled: !!query,
         refetchOnWindowFocus: false,
+        placeholderData: keepPreviousData,
       })
 
       useEffect(() => {
